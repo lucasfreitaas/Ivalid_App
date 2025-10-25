@@ -99,6 +99,10 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-crashlytics-ktx")
 
+    // Para gerar o QR Code (usando uma biblioteca que implementa Zxing)
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
     // Testes
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

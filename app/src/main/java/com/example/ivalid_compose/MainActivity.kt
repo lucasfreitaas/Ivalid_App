@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,8 @@ import com.example.ivalid_compose.ui.cart.CartScreen
 import com.example.ivalid_compose.ui.cart.CartViewModel
 import com.example.ivalid_compose.ui.checkout.CheckoutScreen
 import com.example.ivalid_compose.ui.checkout.CheckoutViewModel
+import com.example.ivalid_compose.ui.checkout.CheckoutViewModelFactory
+import com.example.ivalid_compose.ui.checkout.OrderConfirmationScreen
 import com.example.ivalid_compose.ui.home.HomeScreen
 import com.example.ivalid_compose.ui.home.HomeViewModel
 import com.example.ivalid_compose.ui.login.LoginScreen
@@ -40,6 +43,10 @@ fun AppNavHost() {
 
     val cartVm: CartViewModel = viewModel()
     val homeVm: HomeViewModel = viewModel()
+
+    val checkoutViewModelFactory = remember {
+        CheckoutViewModelFactory(cartVm)
+    }
 
     Surface {
         NavHost(
@@ -108,12 +115,19 @@ fun AppNavHost() {
             }
 
             composable("checkout"){
-                val vm: CheckoutViewModel = viewModel()
+                val vm: CheckoutViewModel = viewModel(factory = checkoutViewModelFactory)
                 CheckoutScreen(
                     viewModel = vm,
                     cartViewModel = cartVm,
                     onFinalizarPedido = {
                         vm.finalizarPedido()
+                        val mockOrderId = "TEMP-12345"
+                        val mockTotal = 150.99f
+
+                        nav.navigate("order_confirmation/$mockOrderId/$mockTotal") {
+                            popUpTo("checkout") { inclusive = true }
+                        }
+
                     },
                     onTrocarEndereco = {
                     },
@@ -123,6 +137,27 @@ fun AppNavHost() {
                 )
             }
 
+            composable(
+                route = "order_confirmation/{orderId}/{totalValue}",
+                arguments = listOf(
+                    navArgument("orderId") { type = NavType.StringType },
+                    navArgument("totalValue") { type = NavType.FloatType }
+                )
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId") ?: "N/A"
+                val totalValue = backStackEntry.arguments?.getFloat("totalValue")?.toDouble() ?: 0.0
+
+                OrderConfirmationScreen(
+                    orderId = orderId,
+                    totalValue = totalValue,
+                    onBackToHome = {
+                        nav.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
         }
     }
 }

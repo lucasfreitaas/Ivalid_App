@@ -195,14 +195,14 @@ fun FormasPagamento(state: CheckoutUiState) {
 
         // Opção Cartão (Desmarcada)
         PagamentoItem(
-            icone = { Icon(Icons.Filled.Warning, contentDescription = "Cartão", modifier = Modifier.size(24.dp)) }, // Use um ícone real de cartão
+            icone = { Icon(painterResource(R.drawable.cartao), contentDescription = "Cartão", modifier = Modifier.size(24.dp)) }, // Use um ícone real de cartão
             texto = "Cartão - (Debito ou Credito)",
             isSelected = state.formaPagamentoSelecionada == "Cartão"
         )
 
         // Opção Dinheiro (Desmarcada)
         PagamentoItem(
-            icone = { Icon(Icons.Filled.Warning, contentDescription = "Dinheiro", modifier = Modifier.size(24.dp)) }, // Use um ícone real de dinheiro
+            icone = { Icon(painterResource(R.drawable.money), contentDescription = "Dinheiro", modifier = Modifier.size(24.dp)) }, // Use um ícone real de dinheiro
             texto = "Dinheiro",
             isSelected = state.formaPagamentoSelecionada == "Dinheiro"
         )
@@ -328,19 +328,21 @@ fun RedDot(isSelected: Boolean) {
 @Composable
 private fun PreviewCheckoutScreen() {
 
+    val mockCartViewModel = CartViewModel()
+
     AppTheme {
         CheckoutScreen(
             viewModel = viewModel(
                 factory = viewModelFactory {
                     initializer {
-                        CheckoutViewModel()
+                        CheckoutViewModel(cartViewModel = mockCartViewModel)
                     }
                 }
             ),
             onFinalizarPedido = {},
             onTrocarEndereco = {},
             onBack = {},
-            cartViewModel = CartViewModel()
+            cartViewModel = mockCartViewModel
         )
     }
 }
