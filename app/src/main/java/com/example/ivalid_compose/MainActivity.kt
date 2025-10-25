@@ -12,6 +12,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.ivalid_compose.ui.cart.CartScreen
 import com.example.ivalid_compose.ui.cart.CartViewModel
+import com.example.ivalid_compose.ui.checkout.CheckoutScreen
+import com.example.ivalid_compose.ui.checkout.CheckoutViewModel
 import com.example.ivalid_compose.ui.home.HomeScreen
 import com.example.ivalid_compose.ui.home.HomeViewModel
 import com.example.ivalid_compose.ui.login.LoginScreen
@@ -100,7 +102,23 @@ fun AppNavHost() {
                     cartViewModel = cartVm,
                     onBack = { nav.popBackStack() },
                     onCheckout = {
-                        // TODO: implemente o fluxo de checkout
+                        nav.navigate("checkout")
+                    }
+                )
+            }
+
+            composable("checkout"){
+                val vm: CheckoutViewModel = viewModel()
+                CheckoutScreen(
+                    viewModel = vm,
+                    cartViewModel = cartVm,
+                    onFinalizarPedido = {
+                        vm.finalizarPedido()
+                    },
+                    onTrocarEndereco = {
+                    },
+                    onBack = {
+                        nav.popBackStack()
                     }
                 )
             }
