@@ -5,13 +5,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import com.example.ivalid_compose.ui.cart.CartViewModel
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-
 
 data class Endereco(
     val rua: String = "Rua 67-A",
@@ -24,41 +24,33 @@ data class CheckoutUiState(
     val valorEntrega: String = "Grátis",
     val formaPagamentoSelecionada: String = "Pix",
     val isFinalizing: Boolean = false,
-    val isDetalhesExpandido: Boolean = false
+    val isDetalhesExpandido: Boolean = false,
+    val apiError: String? = null
 )
 
 class CheckoutViewModel(private val cartViewModel: CartViewModel): ViewModel(){
     var uiState by mutableStateOf(CheckoutUiState())
         private set
 
-    fun finalizarPedido(){
-        uiState = uiState.copy(isFinalizing = true)
-    }
-
+    private val _orderPlacedEvent = MutableSharedFlow<String>()
+    val orderPlacedEvent = _orderPlacedEvent.asSharedFlow()
     fun toggleDetalhes(){
-        uiState = uiState.copy(isDetalhesExpandido = !uiState.isDetalhesExpandido)
+        uiState = uiState.copy(isDetalhesExpandido = !uiState.isDetalhesExpandido,)
     }
 
     fun trocarEndereco(){
 
     }
-
-    private val _orderPlacedEvent = MutableSharedFlow<String>()
-    val orderPlacedEvent = _orderPlacedEvent.asSharedFlow()
-
-    fun finalizarPedido(
-        onSuccess: (String) -> Unit,
-        onErrror: (String) -> Unit
-    ) {
-        if(uiState.isFinalizing) return
+    fun finalizarPedido() {
+        if (uiState.isFinalizing) return
 
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null){
-            onErrror("Usuário não autenticado.")
+            uiState = uiState.copy(apiError = "Usuário não autenticado. Faça login novamente.")
             return
         }
 
-        uiState = uiState.copy(isFinalizing = true)
+        uiState = uiState.copy(isFinalizing = true, apiError = null)
 
         val pedido = hashMapOf(
             "userId" to user.uid,
@@ -74,9 +66,8 @@ class CheckoutViewModel(private val cartViewModel: CartViewModel): ViewModel(){
                     "subtotal" to item.subtotal
                 )
             },
-            "timestamp" to com.google.firebase.Timestamp.now()
+            "timestamp" to Timestamp.now()
         )
-
         FirebaseFirestore.getInstance().collection("pedidos")
             .add(pedido)
             .addOnSuccessListener { documentReference ->
@@ -91,8 +82,10 @@ class CheckoutViewModel(private val cartViewModel: CartViewModel): ViewModel(){
             }
 
             .addOnFailureListener { e ->
-                uiState = uiState.copy(isFinalizing = false)
-                onErrror("Falha ao registrar pedido: ${e.message }")
+                uiState = uiState.copy(
+                    isFinalizing = false,
+                    apiError = "Falha ao registrar pedido. Tente novamente!"
+                )
             }
     }
 }

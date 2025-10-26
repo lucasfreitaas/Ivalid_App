@@ -12,6 +12,16 @@ data class Category(
     val name: String,
     val icon: Int? = null
 )
+enum class ProductSortOption {
+    DEFAULT,
+    PRICE_ASC,      // Menor Preço (Ascendente)
+    PRICE_DESC,     // Maior Preço (Descendente)
+    DISCOUNT_ASC,   // Menor Desconto (Ascendente)
+    DISCOUNT_DESC,  // Maior Desconto (Descendente)
+    DISTANCE_ASC,   // Mais Próximo (Menor KM)
+    DISTANCE_DESC   // Mais Distante (Maior KM)
+}
+
 
 data class Product(
     val id: String,
@@ -36,7 +46,8 @@ data class HomeUiState(
     val categories: List<Category> = emptyList(),
     val allProducts: List<Product> = emptyList(),
     val filteredProducts: List<Product> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val currentSort: ProductSortOption = ProductSortOption.DEFAULT
 )
 
 class HomeViewModel : ViewModel() {
@@ -147,21 +158,39 @@ class HomeViewModel : ViewModel() {
         applyFilters()
     }
 
+    fun sortProducts(sortOption: ProductSortOption) {
+        uiState = uiState.copy(currentSort = sortOption)
+        applyFilters()
+    }
+
     private fun applyFilters() {
         val q = uiState.query.trim().lowercase()
         val cat = uiState.selectedCategoryId
 
-        val filtered = uiState.allProducts.filter { p ->
+        var filtered = uiState.allProducts.filter { p ->
             val matchesQuery = q.isEmpty() ||
                     p.name.lowercase().contains(q) ||
                     p.brand.lowercase().contains(q) ||
                     p.storeName.lowercase().contains(q)
             val matchesCat = (cat == null || cat == "all") || p.categoryId == cat
             matchesQuery && matchesCat
-        }.sortedWith(
-            compareBy<Product> { it.expiresInDays }
-                .thenByDescending { it.discountPercent }
-        )
+        }
+
+        filtered = when(uiState.currentSort){
+            ProductSortOption.PRICE_ASC -> filtered.sortedBy { it.priceNow }
+            ProductSortOption.PRICE_DESC -> filtered.sortedByDescending { it.priceNow }
+
+            ProductSortOption.DISCOUNT_ASC -> filtered.sortedBy { it.discountPercent }
+            ProductSortOption.DISCOUNT_DESC -> filtered.sortedByDescending { it.discountPercent }
+
+            ProductSortOption.DISTANCE_ASC -> filtered.sortedBy { it.distanceKm }
+            ProductSortOption.DISTANCE_DESC -> filtered.sortedByDescending { it.distanceKm }
+
+            ProductSortOption.DEFAULT -> filtered.sortedWith (
+                compareBy<Product> {it.expiresInDays}
+                    .thenByDescending { it.discountPercent }
+            )
+        }
 
         uiState = uiState.copy(filteredProducts = filtered)
     }

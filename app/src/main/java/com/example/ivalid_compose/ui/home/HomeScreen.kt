@@ -16,14 +16,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,18 +44,17 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ivalid_compose.R
+import com.example.ivalid_compose.ui.profile.ProfileViewModel
 import com.example.ivalid_compose.ui.theme.AppTheme
 import com.example.ivalid_compose.ui.theme.GreenAccent
 import com.example.ivalid_compose.ui.theme.RedPrimary
 import com.example.ivalid_compose.ui.theme.RedPrimaryDark
 import com.example.ivalid_compose.ui.theme.YellowAccent
-
-
-// --- 1. DEFINIÇÃO DA BARRA DE NAVEGAÇÃO INFERIOR ---
 
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Home : BottomNavItem("home", Icons.Default.Home, "Início")
@@ -71,7 +74,6 @@ fun BottomNavigationBar(
         BottomNavItem.Settings
     )
 
-    // Obtém a rota atual para destacar o item selecionado
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -119,9 +121,14 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onOpenProduct: (Product) -> Unit,
     cartCount: Int = 0,
-    navController: NavController // Adicionado NavController
+    navController: NavController
 ) {
     val state = viewModel.uiState
+    var isMenuExpanded by remember { mutableStateOf(false) }
+
+
+    val profileVm: ProfileViewModel = viewModel()
+    val userName = profileVm.uiState.userProfile.name
 
     Scaffold(
         topBar = {
@@ -139,7 +146,7 @@ fun HomeScreen(
 
                         Column {
                             Text(
-                                "Ricardo",
+                                userName.split(" ").firstOrNull() ?: "Cliente",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Text(
@@ -150,7 +157,6 @@ fun HomeScreen(
                         }
                     }
                 },
-                // Ícones de Ação (Carrinho e Notificações)
                 actions = {
                     BadgedBox(
                         badge = {
@@ -169,14 +175,48 @@ fun HomeScreen(
                 },
             )
         },
-        // --- ADICIONADO: BARRA DE NAVEGAÇÃO INFERIOR ---
-        bottomBar = {
-            BottomNavigationBar(navController = navController)
-        },
         floatingActionButton = {
-            // Mantido o FAB (Filtros)
-            FloatingActionButton(onClick = { /* Navegação para Filtros */ }, containerColor = RedPrimary) {
-                Icon(Icons.Outlined.FilterList, contentDescription = "Filtros", tint = Color.White)
+            Column(horizontalAlignment = Alignment.End){
+                FloatingActionButton(onClick = { isMenuExpanded = true}, containerColor = RedPrimary){
+                    Icon(Icons.Filled.Sort, contentDescription = "Ordenar por: ", tint = Color.White)
+                }
+
+                DropdownMenu(
+                    expanded = isMenuExpanded,
+                    onDismissRequest = {isMenuExpanded = false},
+                    modifier = Modifier.width(200.dp)
+                ) {
+                    val sortOptions = mapOf(
+                        "Padrão (Vencimento)" to ProductSortOption.DEFAULT,
+                        "Menor Preço" to ProductSortOption.PRICE_ASC,
+                        "Maior Preço" to ProductSortOption.PRICE_DESC,
+                        "---" to ProductSortOption.DEFAULT,
+                        "Maior Desconto" to ProductSortOption.DISCOUNT_DESC,
+                        "Menor Desconto" to ProductSortOption.DISCOUNT_ASC,
+                        "---" to ProductSortOption.DEFAULT,
+                        "Mais Próximo (km)" to ProductSortOption.DISTANCE_ASC,
+                        "Mais Distante (km)" to ProductSortOption.DISTANCE_DESC
+                    )
+
+                    sortOptions.forEach { (label, option) ->
+                        if (label == "---"){
+                            Divider()
+                        } else {
+                            DropdownMenuItem(
+                                text = {Text(label)},
+                                onClick = {
+                                    isMenuExpanded = false
+                                    viewModel.sortProducts(option)
+                                },
+                                leadingIcon = {
+                                    if (state.currentSort == option){
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     ) { padding ->
@@ -222,7 +262,6 @@ fun HomeScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            // 4. Título da Grid (Ofertas perto do vencimento)
             item {
                 Row(
                     modifier = Modifier
@@ -273,7 +312,7 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
-                Spacer(Modifier.height(12.dp)) // Espaçamento entre as linhas
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
@@ -394,8 +433,6 @@ private fun OfferBanner(
         }
     }
 }
-
-// ... (Restante dos Composable auxiliares: ProductCard, ProfileAvatar, safePainterResource)
 @Composable
 private fun ProductCard(
     product: Product,
@@ -594,9 +631,6 @@ private fun safePainterResource(id: Int): Painter? {
     return if (exists) painterResource(id) else null
 }
 
-
-// --- PREVIEWS ---
-// NOTE: As Previews precisam ser atualizadas para receber o NavController
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
