@@ -5,25 +5,25 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,26 +31,253 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.ivalid_compose.R
 import com.example.ivalid_compose.ui.theme.AppTheme
 import com.example.ivalid_compose.ui.theme.GreenAccent
 import com.example.ivalid_compose.ui.theme.RedPrimary
 import com.example.ivalid_compose.ui.theme.RedPrimaryDark
 import com.example.ivalid_compose.ui.theme.YellowAccent
-import kotlinx.coroutines.launch
 
 
+// --- 1. DEFINIÇÃO DA BARRA DE NAVEGAÇÃO INFERIOR ---
+
+sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
+    object Home : BottomNavItem("home", Icons.Default.Home, "Início")
+    object Orders : BottomNavItem("orders", Icons.AutoMirrored.Filled.ListAlt, "Pedidos")
+    object Profile : BottomNavItem("profile", Icons.Default.Person, "Perfil")
+    object Settings : BottomNavItem("settings", Icons.Default.Settings, "Config.")
+}
+
+@Composable
+fun BottomNavigationBar(
+    navController: NavController
+) {
+    val items = listOf(
+        BottomNavItem.Home,
+        BottomNavItem.Orders,
+        BottomNavItem.Profile,
+        BottomNavItem.Settings
+    )
+
+    // Obtém a rota atual para destacar o item selecionado
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.height(64.dp)
+    ) {
+        items.forEach { item ->
+            val isSelected = currentRoute == item.route
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.label,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
+                selected = isSelected,
+                onClick = {
+                    if (currentRoute != item.route) {
+                        navController.navigate(item.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = RedPrimary,
+                    selectedTextColor = RedPrimary,
+                    indicatorColor = RedPrimary.copy(alpha = 0.08f)
+                )
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    onOpenProduct: (Product) -> Unit,
+    cartCount: Int = 0,
+    navController: NavController // Adicionado NavController
+) {
+    val state = viewModel.uiState
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.width(4.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_ivalid),
+                            contentDescription = "Logo Ivalid",
+                            modifier = Modifier.size(24.dp).clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                        Spacer(Modifier.width(8.dp))
+
+                        Column {
+                            Text(
+                                "Ricardo",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                "Ofertas perto de você",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                // Ícones de Ação (Carrinho e Notificações)
+                actions = {
+                    BadgedBox(
+                        badge = {
+                            if (cartCount > 0) {
+                                Badge { Text(cartCount.coerceAtMost(99).toString()) }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = { navController.navigate("cart") }) {
+                            Icon(imageVector = Icons.Outlined.ShoppingCart, contentDescription = "Carrinho")
+                        }
+                    }
+                    IconButton(onClick = { /* Navegação para notificações */ }) {
+                        Icon(imageVector = Icons.Outlined.Notifications, contentDescription = "Notificações")
+                    }
+                },
+            )
+        },
+        // --- ADICIONADO: BARRA DE NAVEGAÇÃO INFERIOR ---
+        bottomBar = {
+            BottomNavigationBar(navController = navController)
+        },
+        floatingActionButton = {
+            // Mantido o FAB (Filtros)
+            FloatingActionButton(onClick = { /* Navegação para Filtros */ }, containerColor = RedPrimary) {
+                Icon(Icons.Outlined.FilterList, contentDescription = "Filtros", tint = Color.White)
+            }
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+
+            item {
+                Spacer(Modifier.height(12.dp))
+                SearchBar(
+                    query = state.query,
+                    onQueryChange = viewModel::onQueryChange,
+                    onClick = { /* onOpenSearch */ },
+                    onClear = { viewModel.onQueryChange("") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+
+            // 2. Category Chips
+            item {
+                CategoryChips(
+                    categories = state.categories,
+                    selectedId = state.selectedCategoryId ?: "all",
+                    onSelect = { id -> viewModel.onSelectCategory(if (id == "all") null else id) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // 3. Offer Banner
+            item {
+                OfferBanner(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // 4. Título da Grid (Ofertas perto do vencimento)
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Ofertas perto do vencimento", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Ver tudo", style = MaterialTheme.typography.labelLarge.copy(color = GreenAccent, textDecoration = TextDecoration.Underline),
+                        modifier = Modifier.clickable { /* onSeeAll() */ }
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            val productRows = (state.filteredProducts.size + 1) / 2
+
+            items(productRows) { rowIndex ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val index1 = rowIndex * 2
+                    val index2 = rowIndex * 2 + 1
+
+                    val product1 = state.filteredProducts.getOrNull(index1)
+                    val product2 = state.filteredProducts.getOrNull(index2)
+
+                    if (product1 != null) {
+                        ProductCard(
+                            product = product1,
+                            onClick = { onOpenProduct(product1) },
+                            onToggleFavorite = { viewModel.toggleFavorite(product1.id) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (product2 != null) {
+                        ProductCard(
+                            product = product2,
+                            onClick = { onOpenProduct(product2) },
+                            onToggleFavorite = { viewModel.toggleFavorite(product2.id) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else if (product1 != null) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(Modifier.height(12.dp)) // Espaçamento entre as linhas
+            }
+        }
+    }
+}
 @Composable
 private fun SearchBar(
     query: String,
@@ -66,7 +293,7 @@ private fun SearchBar(
         leadingIcon = {
             Icon(
                 painter = painterResource(id = android.R.drawable.ic_menu_search),
-                contentDescription = null
+                contentDescription = null,
             )
         },
         trailingIcon = {
@@ -76,10 +303,13 @@ private fun SearchBar(
         },
         singleLine = true,
         shape = RoundedCornerShape(16.dp),
-        colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
-            cursorColor = MaterialTheme.colorScheme.primary
+
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+            cursorColor = MaterialTheme.colorScheme.primary,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedContainerColor = MaterialTheme.colorScheme.surface
         ),
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -165,409 +395,13 @@ private fun OfferBanner(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreen(
-    viewModel: HomeViewModel,
-    onOpenProduct: (Product) -> Unit,
-    onOpenNotifications: () -> Unit = {},
-    onOpenFilters: () -> Unit = {},
-    onOpenSearch: () -> Unit = {},
-    onSeeAll: () -> Unit = {},
-    cartCount: Int = 0,
-    onOpenCart: () -> Unit = {}
-) {
-    val state = viewModel.uiState
-
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.widthIn(min = 280.dp)
-            ) {
-                DrawerHeader(
-                    userName = "Ricardo Gabriel",
-                    onClickAvatar = { /* no-op */ }
-                )
-                Divider()
-
-                NavigationDrawerItem(
-                    label = { Text("Fale conosco") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                    },
-                    icon = { Icon(Icons.Outlined.SupportAgent, contentDescription = null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-            }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-
-                            Spacer(Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    "Ricardo",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                )
-                                Text(
-                                    "Ofertas perto de você",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            ProfileAvatar(
-                                modifier = Modifier.size(32.dp),
-                                contentDescription = "Perfil"
-                            )
-                        }
-                    },
-                    actions = {
-                        BadgedBox(
-                            badge = {
-                                if (cartCount > 0) {
-                                    Badge { Text(cartCount.coerceAtMost(99).toString()) }
-                                }
-                            }
-                        ) {
-                            IconButton(onClick = onOpenCart) {
-                                Icon(
-                                    imageVector = Icons.Outlined.ShoppingCart,
-                                    contentDescription = "Carrinho"
-                                )
-                            }
-                        }
-
-                        IconButton(onClick = onOpenNotifications) {
-                            Icon(
-                                imageVector = Icons.Outlined.Notifications,
-                                contentDescription = "Notificações"
-                            )
-                        }
-                    }
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(onClick = onOpenFilters, containerColor = RedPrimary) {
-                    Icon(Icons.Outlined.FilterList, contentDescription = "Filtros", tint = Color.White)
-                }
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp)
-            ) {
-                Spacer(Modifier.height(12.dp))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 0.dp)
-                ) {
-                    SearchBar(
-                        query = state.query,
-                        onQueryChange = viewModel::onQueryChange,
-                        onClick = onOpenSearch,
-                        onClear = { viewModel.onQueryChange("") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    CategoryChips(
-                        categories = state.categories,
-                        selectedId = state.selectedCategoryId ?: "all",
-                        onSelect = { id -> viewModel.onSelectCategory(if (id == "all") null else id) },
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    OfferBanner(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Ofertas perto do vencimento",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                        )
-                        Text(
-                            "Ver tudo",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                color = GreenAccent,
-                                textDecoration = TextDecoration.Underline
-                            ),
-                            modifier = Modifier.clickable { onSeeAll() }
-                        )
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 88.dp)
-                    ) {
-                        items(state.filteredProducts, key = { it.id }) { product ->
-                            ProductCard(
-                                product = product,
-                                onClick = { onOpenProduct(product) },
-                                onToggleFavorite = { viewModel.toggleFavorite(product.id) }
-                            )
-                        }
-                    }
-                }
-
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Ofertas perto do vencimento",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                    )
-                    Text(
-                        "Ver tudo",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            color = GreenAccent,
-                            textDecoration = TextDecoration.Underline
-                        ),
-                        modifier = Modifier.clickable { onSeeAll() }
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 88.dp)
-                ) {
-                    items(state.filteredProducts, key = { it.id }) { product ->
-                        ProductCard(
-                            product = product,
-                            onClick = { onOpenProduct(product) },
-                            onToggleFavorite = { viewModel.toggleFavorite(product.id) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DrawerHeader(
-    userName: String,
-    onClickAvatar: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ProfileAvatar(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onClickAvatar),
-            contentDescription = "Foto do perfil"
-        )
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(userName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("Ver perfil", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun ProfileAvatar(
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null
-) {
-    val painter = safePainterResource(R.drawable.logo_ivalid)
-    if (painter != null) {
-        Image(
-            painter = painter,
-            contentDescription = contentDescription,
-            modifier = modifier.clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        Icon(
-            imageVector = Icons.Outlined.AccountCircle,
-            contentDescription = contentDescription,
-            modifier = modifier,
-            tint = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun safePainterResource(id: Int): Painter? {
-    val context = LocalContext.current
-    val exists = remember(id) {
-        try {
-            context.resources.getResourceName(id)
-            true
-        } catch (_: android.content.res.Resources.NotFoundException) {
-            false
-        }
-    }
-    return if (exists) painterResource(id) else null
-}
-
-
-@Composable
-private fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClick: () -> Unit,
-    onClear: () -> Unit
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text("Buscar produto, marca ou loja") },
-        leadingIcon = {
-            Icon(
-                painter = painterResource(id = android.R.drawable.ic_menu_search),
-                contentDescription = null
-            )
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                TextButton(onClick = onClear) { Text("Limpar") }
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(16.dp),
-        colors = TextFieldDefaults.colors(
-            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
-            cursorColor = MaterialTheme.colorScheme.primary
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@Composable
-private fun CategoryChips(
-    categories: List<Category>,
-    selectedId: String,
-    onSelect: (String) -> Unit
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 2.dp)
-    ) {
-        items(categories.size) { idx ->
-            val c = categories[idx]
-            val selected = (selectedId == (c.id))
-            FilterChip(
-                selected = selected,
-                onClick = { onSelect(c.id) },
-                label = { Text(c.name) },
-                leadingIcon = null,
-                shape = RoundedCornerShape(50),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = if (selected) RedPrimary.copy(alpha = 0.10f) else Color(0xFFF2F2F2),
-                    labelColor = if (selected) RedPrimary else MaterialTheme.colorScheme.onSurface,
-                    selectedContainerColor = RedPrimary.copy(alpha = 0.18f),
-                    selectedLabelColor = RedPrimary,
-                    selectedLeadingIconColor = RedPrimary
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun OfferBanner() {
-    val shape = RoundedCornerShape(16.dp)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .clip(shape)
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(RedPrimary, RedPrimaryDark)
-                )
-            )
-            .padding(16.dp)
-    ) {
-        Column(
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxHeight()
-        ) {
-            Text(
-                text = "Aproveite descontos de até 70%",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .height(6.dp)
-                        .width(28.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(GreenAccent)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Itens próximos da validade • Estoque limitado",
-                    style = MaterialTheme.typography.bodySmall.copy(color = Color.White.copy(alpha = 0.9f))
-                )
-            }
-        }
-    }
-}
-
+// ... (Restante dos Composable auxiliares: ProductCard, ProfileAvatar, safePainterResource)
 @Composable
 private fun ProductCard(
     product: Product,
     onClick: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(16.dp)
 
@@ -577,15 +411,13 @@ private fun ProductCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .shadow(elevation = 0.dp, shape = shape)
     ) {
         Column(Modifier.padding(10.dp)) {
 
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .height(110.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFF5F5F5))
@@ -725,14 +557,56 @@ private fun GradientRedButton(
     }
 }
 
+@Composable
+private fun ProfileAvatar(
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null
+) {
+    val painter = safePainterResource(R.drawable.logo_ivalid)
+    if (painter != null) {
+        Image(
+            painter = painter,
+            contentDescription = contentDescription,
+            modifier = modifier.clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Outlined.AccountCircle,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            tint = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun safePainterResource(id: Int): Painter? {
+    val context = LocalContext.current
+    val exists = remember(id) {
+        try {
+            context.resources.getResourceName(id)
+            true
+        } catch (_: android.content.res.Resources.NotFoundException) {
+            false
+        }
+    }
+    return if (exists) painterResource(id) else null
+}
+
+
+// --- PREVIEWS ---
+// NOTE: As Previews precisam ser atualizadas para receber o NavController
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
 private fun PreviewHomeLight() {
     AppTheme(darkTheme = false) {
+        val navController = rememberNavController()
         HomeScreen(
             viewModel = HomeViewModel(),
-            onOpenProduct = {}
+            onOpenProduct = {},
+            navController = navController
         )
     }
 }
@@ -742,9 +616,11 @@ private fun PreviewHomeLight() {
 @Composable
 private fun PreviewHomeDark() {
     AppTheme(darkTheme = true) {
+        val navController = rememberNavController()
         HomeScreen(
             viewModel = HomeViewModel(),
-            onOpenProduct = {}
+            onOpenProduct = {},
+            navController = navController
         )
     }
 }

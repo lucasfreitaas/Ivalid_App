@@ -21,6 +21,7 @@ import com.example.ivalid_compose.ui.home.HomeScreen
 import com.example.ivalid_compose.ui.home.HomeViewModel
 import com.example.ivalid_compose.ui.login.LoginScreen
 import com.example.ivalid_compose.ui.login.LoginViewModel
+import com.example.ivalid_compose.ui.orders.OrdersScreen
 import com.example.ivalid_compose.ui.product.ProductDetailsScreen
 import com.example.ivalid_compose.ui.signup.SignUpScreen
 import com.example.ivalid_compose.ui.signup.SignUpViewModel
@@ -79,11 +80,12 @@ fun AppNavHost() {
             }
 
             composable("home") {
+
                 HomeScreen(
                     viewModel = homeVm,
                     onOpenProduct = { product -> nav.navigate("product/${product.id}") },
-                    cartCount = cartVm.uiState.count,       // badge se atualiza com o state
-                    onOpenCart = { nav.navigate("cart") }
+                    cartCount = cartVm.uiState.count,
+                    navController = nav
                 )
             }
 
@@ -133,6 +135,14 @@ fun AppNavHost() {
                     },
                     onBack = {
                         nav.popBackStack()
+                    }
+                )
+            }
+
+            composable("orders"){
+                OrdersScreen(
+                    onOpenOrderDetails = { orderId ->
+
                     }
                 )
             }
