@@ -7,7 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -20,6 +24,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.stylusHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,6 +50,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.ivalid_compose.R
 import com.example.ivalid_compose.ui.profile.ProfileViewModel
 import com.example.ivalid_compose.ui.theme.AppTheme
@@ -216,99 +223,50 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(padding),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            item {
-                Spacer(Modifier.height(12.dp))
-                SearchBar(
-                    query = state.query,
-                    onQueryChange = viewModel::onQueryChange,
-                    onClick = { /* onOpenSearch */ },
-                    onClear = { viewModel.onQueryChange("") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
-                Spacer(Modifier.height(10.dp))
-            }
-
-            // 2. Category Chips
-            item {
-                CategoryChips(
-                    categories = state.categories,
-                    selectedId = state.selectedCategoryId ?: "all",
-                    onSelect = { id -> viewModel.onSelectCategory(if (id == "all") null else id) },
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-
-            // 3. Offer Banner
-            item {
-                OfferBanner(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Ofertas perto do vencimento", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                    Text("Ver tudo", style = MaterialTheme.typography.labelLarge.copy(color = GreenAccent, textDecoration = TextDecoration.Underline),
-                        modifier = Modifier.clickable { /* onSeeAll() */ }
+            item(span = { GridItemSpan(2) }) {
+                Column {
+                    Spacer(Modifier.height(12.dp))
+                    SearchBar(
+                        query = state.query,
+                        onQueryChange = viewModel::onQueryChange,
+                        onClear = { viewModel.onQueryChange("") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    CategoryChips(
+                        categories = state.categories,
+                        selectedId = state.selectedCategoryId ?: "all",
+                        onSelect = { id -> viewModel.onSelectCategory(if (id == "all") null else "id") }
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OfferBanner(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Ofertas perto do vencimento",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
                     )
                 }
-                Spacer(Modifier.height(8.dp))
             }
-
-            val productRows = (state.filteredProducts.size + 1) / 2
-
-            items(productRows) { rowIndex ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val index1 = rowIndex * 2
-                    val index2 = rowIndex * 2 + 1
-
-                    val product1 = state.filteredProducts.getOrNull(index1)
-                    val product2 = state.filteredProducts.getOrNull(index2)
-
-                    if (product1 != null) {
-                        ProductCard(
-                            product = product1,
-                            onClick = { onOpenProduct(product1) },
-                            onToggleFavorite = { viewModel.toggleFavorite(product1.id) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (product2 != null) {
-                        ProductCard(
-                            product = product2,
-                            onClick = { onOpenProduct(product2) },
-                            onToggleFavorite = { viewModel.toggleFavorite(product2.id) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else if (product1 != null) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
+                items(
+                    items = state.filteredProducts,
+                    // Usamos o ID do produto para o Compose saber que cada item é único
+                    key = { product -> product.id.ifEmpty { "${product.name}_${product.priceNow}" } }
+                ) { product -> // O lambda do conteúdo deve abrir aqui
+                    ProductCard(
+                        product = product,
+                        onClick = { onOpenProduct(product) },
+                        onToggleFavorite = { viewModel.toggleFavorite(product.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
             }
         }
     }
@@ -364,7 +322,7 @@ private fun CategoryChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
-        items(categories.size) { idx ->
+        items(categories.size, key = { it }){ idx ->
             val c = categories[idx]
             val selected = (selectedId == c.id)
             FilterChip(
@@ -446,8 +404,9 @@ private fun ProductCard(
         ),
         modifier = modifier
             .shadow(elevation = 0.dp, shape = shape)
+            .height(310.dp)
     ) {
-        Column(Modifier.padding(10.dp)) {
+        Column(Modifier.padding(10.dp).fillMaxSize()) {
 
             Box(
                 modifier = Modifier
@@ -455,14 +414,17 @@ private fun ProductCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFF5F5F5))
             ) {
-                AsyncImage(
-                    model = product.urlImagem,
-                    contentDescription = "Imagem de ${product.name}",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentScale = ContentScale.Crop
-                )
+                key(product.id){
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(product.urlImagem)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = product.name,
+                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
                 Box(
                     modifier = Modifier
@@ -493,8 +455,8 @@ private fun ProductCard(
                 }
 
                 val (bg, fg) = when {
-                    product.expiresInDays <= 2 -> RedPrimary.copy(alpha = 0.15f) to RedPrimary
-                    product.expiresInDays <= 7 -> YellowAccent.copy(alpha = 0.18f) to YellowAccent
+                    product.expiresInDays <= 10 -> RedPrimary.copy(alpha = 0.15f) to RedPrimary
+                    product.expiresInDays <= 30 -> YellowAccent.copy(alpha = 0.18f) to YellowAccent
                     else -> GreenAccent.copy(alpha = 0.16f) to GreenAccent
                 }
                 Box(
@@ -550,7 +512,7 @@ private fun ProductCard(
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.weight(1f))
 
             GradientRedButton(
                 text = "Ver oferta",

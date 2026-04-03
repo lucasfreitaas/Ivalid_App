@@ -135,7 +135,7 @@ private fun OrderCard(order: Order, onOpen: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Itens no Pedido (${order.items.size})",
+                    "Detalhes do Pedido",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -148,16 +148,31 @@ private fun OrderCard(order: Order, onOpen: (String) -> Unit) {
 
             AnimatedVisibility(visible = isExpanded) {
                 Column(modifier = Modifier.padding(top = 10.dp)) {
+                    Divider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outline.copy(alpha=0.5f))
+
+                    order.items.forEach { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${item.quantity}x ${item.name}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                "R$ %.2f".format(item.subtotal),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = RedPrimary
+                            )
+                        }
+                    }
 
                     Spacer(Modifier.height(12.dp))
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        onClick = { onOpen(order.id) },
-                        colors = ButtonDefaults.buttonColors(containerColor = RedPrimaryDark)
-                    ) {
-                        Text("Ver Detalhes do Pedido")
-                    }
                 }
             }
         }

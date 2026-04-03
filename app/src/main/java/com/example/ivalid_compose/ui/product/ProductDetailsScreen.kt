@@ -3,11 +3,16 @@ package com.example.ivalid_compose.ui.product
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ivalid_compose.ui.cart.CartViewModel
 import com.example.ivalid_compose.ui.home.Product
 import com.example.ivalid_compose.ui.theme.GreenAccent
+import com.example.ivalid_compose.ui.theme.GreenAccentDark
 import com.example.ivalid_compose.ui.theme.RedPrimary
 import com.example.ivalid_compose.ui.theme.RedPrimaryDark
 import kotlinx.coroutines.launch
@@ -36,9 +42,8 @@ fun ProductDetailsScreen(
     onAddedToCart: () -> Unit,
     cartViewModel: CartViewModel
 ) {
+    println("DETALHES: Carregando produto ${product?.name} com imagem ${product?.urlImagem}")
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
 
     if (product == null) {
         Scaffold(
@@ -77,16 +82,15 @@ fun ProductDetailsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color(0xFFF8F9FA))
+                .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 16.dp)
         ) {
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFF5F5F5))
+                    .height(300.dp)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 coil.compose.AsyncImage(
                     model = product.urlImagem,
@@ -94,135 +98,175 @@ fun ProductDetailsScreen(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(24.dp),
                     error = coil.compose.rememberAsyncImagePainter(model = null),
                     placeholder = coil.compose.rememberAsyncImagePainter(model = null)
                 )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(12.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(RedPrimary)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "-${product.discountPercent}%",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
 
                 val (bg, fg) = when {
-                    product.expiresInDays <= 2 -> RedPrimary.copy(alpha = 0.15f) to RedPrimary
-                    product.expiresInDays <= 7 -> Color(0xFFFFA000).copy(alpha = 0.18f) to Color(0xFFFFA000)
-                    else -> GreenAccent.copy(alpha = 0.16f) to GreenAccent
+                    product.expiresInDays <= 10 -> RedPrimary.copy(alpha = 0.15f) to RedPrimary
+                    product.expiresInDays <= 30 -> Color(0xFFE9C46A).copy(alpha = 0.20f) to Color(0xFFD4A017)
+                    else -> GreenAccent.copy(alpha = 0.15f) to GreenAccentDark
                 }
-                Box(
+
+                Row(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(12.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(bg)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Text(
-                        text = "Vence em ${product.expiresInDays}d",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = fg, fontWeight = FontWeight.SemiBold
+                   Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(bg)
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Vence em ${product.expiresInDays}d",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = fg, fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(RedPrimary)
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "-${product.discountPercent}%",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                product.name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-            )
-            Text(
-                product.brand,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                "${product.storeName} • ${"%.1f".format(product.distanceKm)} km",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    "R$ ${"%.2f".format(product.priceNow)}",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = RedPrimary
-                    )
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "R$ ${"%.2f".format(product.priceOriginal)}",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textDecoration = TextDecoration.LineThrough
-                    )
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                    .padding(10.dp)
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
             ) {
-                Text("Quantidade", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                QuantityStepper(
-                    value = quantity,
-                    onIncrement = { quantity += 1 },
-                    onDecrement = { if (quantity > 1) quantity -= 1 }
+                Text(
+                    product.name,
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
                 )
+                Text(
+                    product.brand.uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Outlined.Storefront, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        product.storeName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${"%.1f".format(product.distanceKm)} km",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Divider(Modifier.padding(vertical = 20.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+
+                Text(
+                    "Preço Especial",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        "R$ ${"%.2f".format(product.priceNow)}",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "R$ ${"%.2f".format(product.priceOriginal)}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textDecoration = TextDecoration.LineThrough
+                        ),
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    Text("Quantidade", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    QuantityStepper(
+                        value = quantity,
+                        onIncrement = { quantity += 1 },
+                        onDecrement = { if (quantity > 1) quantity -= 1 }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GreenAccent.copy(alpha=0.1f))
+                        .padding(16.dp)
+                ) {
+                   Icon(Icons.Outlined.Info, contentDescription = null, tint = GreenAccentDark)
+                   Spacer(Modifier.width(12.dp))
+                   Text(
+                       "Retirada até ${calcPickupDeadline(product.expiresInDays)}.",
+                       style = MaterialTheme.typography.bodyMedium,
+                       color = GreenAccentDark
+                   )
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                val scope = rememberCoroutineScope()
+
+                GradientRedButton(
+                    text = "Adicionar ao carrinho",
+                    enabled = quantity > 0,
+                    onClick = {
+                        cartViewModel.add(product, quantity)
+                        scope.launch { snackbarHostState.showSnackbar("Adicionado ao carrinho") }
+                        onAddedToCart()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                )
+
+                Spacer(Modifier.height(32.dp))
             }
-
-            Spacer(Modifier.height(16.dp))
-
-
-            Text(
-                "Retirada na loja até o dia ${calcPickupDeadline(product.expiresInDays)}.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-
-            val snackbarHostState = remember { SnackbarHostState() }
-            val scope = rememberCoroutineScope()
-
-            GradientRedButton(
-                text = "Adicionar ao carrinho",
-                enabled = quantity > 0,
-                onClick = {
-                    cartViewModel.add(product, quantity)
-                    scope.launch { snackbarHostState.showSnackbar("Adicionado ao carrinho") }
-                    onAddedToCart()
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-
-            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -263,13 +307,13 @@ private fun GradientRedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(16.dp)
     val gradient = Brush.horizontalGradient(listOf(RedPrimary, RedPrimaryDark))
     val contentAlpha = if (enabled) 1f else 0.5f
 
     Box(
         modifier = modifier
-            .height(50.dp)
+            .height(56.dp)
             .clip(shape)
             .background(brush = gradient)
             .alpha(contentAlpha)
@@ -278,9 +322,9 @@ private fun GradientRedButton(
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.titleSmall.copy(
+            style = MaterialTheme.typography.titleMedium.copy(
                 color = Color.White,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Bold
             )
         )
     }

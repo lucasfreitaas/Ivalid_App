@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -85,18 +87,32 @@ fun ProfileScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(2.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    ProfileItem(Icons.Default.Email, "Email", user.email)
+                    ProfileItem(Icons.Default.Person, "Nome", user.name)
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    ProfileItem(Icons.Default.Person, "ID do Usuário", user.uid.take(10) + "...")
+                    ProfileItem(Icons.Default.Email, "Email", user.email)
 
                     if (user.isVerified) {
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        Text("Conta Verificada", color = Color.Green, style = MaterialTheme.typography.labelMedium)
+                        Text("Conta Verificada", color = Color(0xFF4CAF50), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                 }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = { /* TODO: Adicionar endereço */ },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, RedPrimary),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = RedPrimary)
+            ) {
+                Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Adicionar Endereço", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(Modifier.height(32.dp))

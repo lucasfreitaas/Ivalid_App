@@ -2,22 +2,22 @@ package com.example.ivalid_compose.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val RedPrimary = Color(0xFFD32F2F)
-val RedPrimaryDark = Color(0xFFB71C1C)
-val RedSecondary = Color(0xFFE57373)
+val RedPrimary = Color(0xFFE63946)
+val RedPrimaryDark = Color(0xFFD62828)
+val RedSecondary = Color(0xFFFF6B6B)
 
-val GreenAccent = Color(0xFF43A047)
-val GreenAccentDark = Color(0xFF2E7D32)
+val GreenAccent = Color(0xFF2A9D8F)
+val GreenAccentDark = Color(0xFF264653)
 
-val BackgroundLight = Color(0xFFFFFBFB)
+val BackgroundLight = Color(0xFFF8F9FA)
 val SurfaceLight = Color(0xFFFFFFFF)
-val OnBackgroundLight = Color(0xFF1B1B1F)
-val OutlineLight = Color(0xFFE5C1C1)
+val OnBackgroundLight = Color(0xFF212529)
+val OutlineLight = Color(0xFFDEE2E6)
 
 val BackgroundDark = Color(0xFF121212)
 val SurfaceDark = Color(0xFF1E1E1E)
-val OnBackgroundDark = Color(0xFFE6E1E5)
-val OutlineDark = Color(0xFF5A4A4A)
+val OnBackgroundDark = Color(0xFFF8F9FA)
+val OutlineDark = Color(0xFF495057)
 
-val YellowAccent = Color(0xFFFFA000)
-val GrayChip = Color(0xFFECECEC)
+val YellowAccent = Color(0xFFE9C46A)
+val GrayChip = Color(0xFFF1F3F5)

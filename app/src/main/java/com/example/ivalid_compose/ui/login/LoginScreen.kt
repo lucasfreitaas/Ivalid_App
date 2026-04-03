@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -70,27 +72,30 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFFF8F9FA))
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focus.clearFocus()
+                })
+            }
             .padding(horizontal = 24.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(48.dp))
 
         Image(
             painter = painterResource(id = R.drawable.logo_ivalid),
             contentDescription = "Logo Ivalid",
             modifier = Modifier
-                .size(190.dp)
-                .padding(top = 8.dp),
+                .size(160.dp)
+                .padding(bottom = 16.dp),
             contentScale = ContentScale.Fit
         )
 
-        Spacer(Modifier.height(16.dp))
-
         Text(
             text = "Bem-vindo de volta",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
@@ -99,30 +104,30 @@ fun LoginScreen(
 
         Box(
             Modifier
-                .height(4.dp)
-                .width(64.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(GreenAccent.copy(alpha = 0.9f))
+                .height(6.dp)
+                .width(48.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(RedPrimary)
         )
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text(
             text = "Entre com sua conta Ivalid",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(36.dp))
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp,
-            shadowElevation = 0.dp
+            shadowElevation = 8.dp,
+            tonalElevation = 0.dp
         ) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.padding(24.dp)) {
 
                 OutlinedTextField(
                     value = state.email,
@@ -173,7 +178,7 @@ fun LoginScreen(
                             Icon(
                                 imageVector = if (state.isPasswordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = if (state.isPasswordVisible) "Ocultar senha" else "Mostrar senha",
-                                tint = GreenAccent
+                                tint = if (state.isPasswordVisible) RedPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     },
@@ -201,16 +206,12 @@ fun LoginScreen(
                             }
                         }
                     ),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
-                        disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                        cursorColor = MaterialTheme.colorScheme.primary,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                         focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        focusedLeadingIconColor = GreenAccent,
-                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        focusedLeadingIconColor = RedPrimary,
+                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -235,7 +236,7 @@ fun LoginScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onForgotPassword) {
-                        Text("Esqueci minha senha", color = GreenAccent)
+                        Text("Esqueci minha senha", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -260,12 +261,14 @@ fun LoginScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Não tem conta?",
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 "Cadastre-se",
-                color = GreenAccent,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                color = RedPrimary,
                 modifier = Modifier.clickable { onSignUp() }
             )
         }
@@ -281,7 +284,7 @@ private fun GradientRedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(16.dp)
     val gradient = Brush.horizontalGradient(
         colors = listOf(RedPrimary, RedPrimaryDark)
     )
@@ -289,7 +292,7 @@ private fun GradientRedButton(
 
     Box(
         modifier = modifier
-            .height(54.dp)
+            .height(56.dp)
             .clip(shape)
             .background(brush = gradient, alpha = alpha)
             .clickable(enabled = enabled, onClick = onClick),
@@ -297,7 +300,7 @@ private fun GradientRedButton(
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color.White
         )
     }

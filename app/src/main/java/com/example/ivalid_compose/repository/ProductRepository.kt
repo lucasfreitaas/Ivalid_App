@@ -12,7 +12,9 @@ class ProductRepository{
     suspend fun getProducts(): List<Product>{
         return try{
             val snapshot = db.collection("produtos").get().await()
-            snapshot.toObjects(Product::class.java)
+            snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Product::class.java)?.copy(id = doc.id)
+            }
         } catch (e: Exception){
             emptyList()
         }

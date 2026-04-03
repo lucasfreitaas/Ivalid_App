@@ -32,15 +32,19 @@ data class Product(
     val urlImagem: String = "",
     val storeName: String = "",
     val distanceKm: Double = 0.0,
-    val priceOriginal: Double = 0.0,
-    val priceNow: Double = 0.0,
-    val expiresInDays: Int = 0,
+    val oldPrice: Double = 0.0,
+    val newPrice: Double = 0.0,
+    val Daysvalidity: Int = 0,
     val categoryId: String = "",
     val isFavorite: Boolean = false
 ) {
+    val priceOriginal get() = oldPrice
+    val priceNow get() = newPrice
+    val expiresInDays get() = Daysvalidity
+
     val discountPercent: Int
-        get() = if (priceOriginal > 0) {
-            val res = ((priceOriginal - priceNow) / priceOriginal) * 100
+        get() = if (oldPrice > 0) {
+            val res = ((oldPrice - newPrice) / oldPrice) * 100
             if (res.isNaN()) 0 else res.roundToInt().coerceAtLeast(0)
         } else 0
 }

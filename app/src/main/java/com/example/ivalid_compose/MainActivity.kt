@@ -45,6 +45,7 @@ import androidx.navigation.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.ivalid_compose.ui.profile.ProfileScreen
 import com.example.ivalid_compose.ui.profile.ProfileViewModel
+import com.example.ivalid_compose.ui.settings.SettingsScreen
 import com.example.ivalid_compose.ui.theme.RedPrimary
 
 class MainActivity : ComponentActivity() {
@@ -81,7 +82,7 @@ fun AppNavHost() {
             NavHost(
                 navController = nav,
                 startDestination = "login",
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
             ) {
                 composable("login") {
                     val vm: LoginViewModel = viewModel()
@@ -141,7 +142,7 @@ fun AppNavHost() {
                     arguments = listOf(navArgument("productId") { type = NavType.StringType })
                 ) { backStack ->
                     val productId = backStack.arguments?.getString("productId")
-                    val product = homeVm.uiState.allProducts.find { it.id == productId }
+                    val product = homeVm.uiState.filteredProducts.find { it.id == productId }
 
                     ProductDetailsScreen(
                         product = product,
@@ -221,7 +222,7 @@ fun AppNavHost() {
                     )
                 }
                 composable("settings") {
-                    // SettingsScreen()
+                    SettingsScreen()
                 }
             }
     }
