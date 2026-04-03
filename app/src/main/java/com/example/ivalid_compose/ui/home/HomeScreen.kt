@@ -5,13 +5,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -22,21 +21,14 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.stylusHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -45,14 +37,12 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.ivalid_compose.R
-import com.example.ivalid_compose.ui.profile.ProfileViewModel
 import com.example.ivalid_compose.ui.theme.AppTheme
 import com.example.ivalid_compose.ui.theme.GreenAccent
 import com.example.ivalid_compose.ui.theme.RedPrimary
@@ -66,62 +56,12 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
     object Settings : BottomNavItem("settings", Icons.Default.Settings, "Config.")
 }
 
-@Composable
-fun BottomNavigationBar(
-    navController: NavController
-) {
-    val items = listOf(
-        BottomNavItem.Home,
-        BottomNavItem.Orders,
-        BottomNavItem.Profile,
-        BottomNavItem.Settings
-    )
-
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.height(64.dp)
-    ) {
-        items.forEach { item ->
-            val isSelected = currentRoute == item.route
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        item.icon,
-                        contentDescription = item.label,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
-                selected = isSelected,
-                onClick = {
-                    if (currentRoute != item.route) {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = RedPrimary,
-                    selectedTextColor = RedPrimary,
-                    indicatorColor = RedPrimary.copy(alpha = 0.08f)
-                )
-            )
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    userName: String, // recebe do pai, sem criar novo ViewModel aqui
     onOpenProduct: (Product) -> Unit,
     cartCount: Int = 0,
     navController: NavController
@@ -129,9 +69,21 @@ fun HomeScreen(
     val state = viewModel.uiState
     var isMenuExpanded by remember { mutableStateOf(false) }
 
-
-    val profileVm: ProfileViewModel = viewModel()
-    val userName = profileVm.uiState.userProfile.name
+    // Criado uma única vez — não recriado a cada recomposição
+    val sortOptions = remember {
+        listOf(
+            "Padrão (Vencimento)" to ProductSortOption.DEFAULT,
+            null to ProductSortOption.DEFAULT, // divider
+            "Menor Preço" to ProductSortOption.PRICE_ASC,
+            "Maior Preço" to ProductSortOption.PRICE_DESC,
+            null to ProductSortOption.DEFAULT, // divider
+            "Maior Desconto" to ProductSortOption.DISCOUNT_DESC,
+            "Menor Desconto" to ProductSortOption.DISCOUNT_ASC,
+            null to ProductSortOption.DEFAULT, // divider
+            "Mais Próximo (km)" to ProductSortOption.DISTANCE_ASC,
+            "Mais Distante (km)" to ProductSortOption.DISTANCE_DESC
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -189,30 +141,18 @@ fun HomeScreen(
                     onDismissRequest = {isMenuExpanded = false},
                     modifier = Modifier.width(200.dp)
                 ) {
-                    val sortOptions = mapOf(
-                        "Padrão (Vencimento)" to ProductSortOption.DEFAULT,
-                        "Menor Preço" to ProductSortOption.PRICE_ASC,
-                        "Maior Preço" to ProductSortOption.PRICE_DESC,
-                        "---" to ProductSortOption.DEFAULT,
-                        "Maior Desconto" to ProductSortOption.DISCOUNT_DESC,
-                        "Menor Desconto" to ProductSortOption.DISCOUNT_ASC,
-                        "---" to ProductSortOption.DEFAULT,
-                        "Mais Próximo (km)" to ProductSortOption.DISTANCE_ASC,
-                        "Mais Distante (km)" to ProductSortOption.DISTANCE_DESC
-                    )
-
                     sortOptions.forEach { (label, option) ->
-                        if (label == "---"){
+                        if (label == null) {
                             Divider()
                         } else {
                             DropdownMenuItem(
-                                text = {Text(label)},
+                                text = { Text(label) },
                                 onClick = {
                                     isMenuExpanded = false
                                     viewModel.sortProducts(option)
                                 },
                                 leadingIcon = {
-                                    if (state.currentSort == option){
+                                    if (state.currentSort == option) {
                                         Icon(Icons.Default.Check, contentDescription = null)
                                     }
                                 }
@@ -245,7 +185,7 @@ fun HomeScreen(
                     CategoryChips(
                         categories = state.categories,
                         selectedId = state.selectedCategoryId ?: "all",
-                        onSelect = { id -> viewModel.onSelectCategory(if (id == "all") null else "id") }
+                        onSelect = { id -> viewModel.onSelectCategory(if (id == "all") null else id) }
                     )
                     Spacer(Modifier.height(16.dp))
                     OfferBanner(modifier = Modifier.fillMaxWidth())
@@ -552,53 +492,17 @@ private fun GradientRedButton(
     }
 }
 
-@Composable
-private fun ProfileAvatar(
-    modifier: Modifier = Modifier,
-    contentDescription: String? = null
-) {
-    val painter = safePainterResource(R.drawable.logo_ivalid)
-    if (painter != null) {
-        Image(
-            painter = painter,
-            contentDescription = contentDescription,
-            modifier = modifier.clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        Icon(
-            imageVector = Icons.Outlined.AccountCircle,
-            contentDescription = contentDescription,
-            modifier = modifier,
-            tint = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun safePainterResource(id: Int): Painter? {
-    val context = LocalContext.current
-    val exists = remember(id) {
-        try {
-            context.resources.getResourceName(id)
-            true
-        } catch (_: android.content.res.Resources.NotFoundException) {
-            false
-        }
-    }
-    return if (exists) painterResource(id) else null
-}
 
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true)
 @Composable
 private fun PreviewHomeLight() {
     AppTheme(darkTheme = false) {
-        val navController = rememberNavController()
         HomeScreen(
             viewModel = HomeViewModel(),
+            userName = "Preview",
             onOpenProduct = {},
-            navController = navController
+            navController = rememberNavController()
         )
     }
 }
@@ -608,11 +512,11 @@ private fun PreviewHomeLight() {
 @Composable
 private fun PreviewHomeDark() {
     AppTheme(darkTheme = true) {
-        val navController = rememberNavController()
         HomeScreen(
             viewModel = HomeViewModel(),
+            userName = "Preview",
             onOpenProduct = {},
-            navController = navController
+            navController = rememberNavController()
         )
     }
 }

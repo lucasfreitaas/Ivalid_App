@@ -1,13 +1,10 @@
 package com.example.ivalid_compose.ui.orders
 
-import androidx.compose.material3.DatePicker
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.ivalid_compose.R
-import com.example.ivalid_compose.ui.home.Product
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -37,76 +34,60 @@ data class OrdersUiState(
     val error: String? = null
 )
 
-class OrdersViewModel: ViewModel(){
+class OrdersViewModel : ViewModel() {
+
     var uiState by mutableStateOf(OrdersUiState())
         private set
 
-    init{
+    // Criado uma única vez — evita recriar o objeto a cada parse de data
+    private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR"))
+
+    init {
         fetchOrders()
     }
 
-    private fun fetchOrders(){
+    private fun fetchOrders() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId == null){
-            uiState = uiState.copy(
-                isLoading = false,
-                error = "Usuário não autenticado. Faça login novamente!"
-            )
+        if (userId == null) {
+            uiState = uiState.copy(isLoading = false, error = "Usuário não autenticado. Faça login novamente!")
             return
         }
 
         uiState = uiState.copy(isLoading = true, error = null)
 
         viewModelScope.launch {
-            try{
-                val db = FirebaseFirestore.getInstance()
-
-                val result = db.collection("pedidos")
+            runCatching {
+                FirebaseFirestore.getInstance()
+                    .collection("pedidos")
                     .whereEqualTo("userId", userId)
                     .orderBy("timestamp", Query.Direction.DESCENDING)
                     .get()
                     .await()
-
-                val ordersList = result.documents.mapNotNull { document ->
-                    try {
-                    val total = (document.get("total") as? Number)?.toDouble() ?: 0.0
-                    val status = document.getString("status") ?: "Status desconhecido"
-                    val timestamp = document.getTimestamp("timestamp")?.toDate() ?: Date()
-
-                    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR"))
-                    val dateStr = dateFormat.format(timestamp)
-
-                    @Suppress("UNCHECKED_CAST")
-                    val itemsMaps = document.get("itens") as? List<Map<String, Any>> ?: emptyList()
-                    val ordersItems = itemsMaps.map { itemMap ->
-                        OrderItem(
-                            name = itemMap["name"] as? String ?: "Item Desconhecido",
-                            quantity = (itemMap["quantity"] as? Number)?.toInt() ?: 0,
-                            subtotal = (itemMap["subtotal"] as? Number)?.toDouble() ?: 0.0
-                        )
+                    .documents
+                    .mapNotNull { doc ->
+                        runCatching {
+                            val timestamp = doc.getTimestamp("timestamp")?.toDate() ?: Date()
+                            @Suppress("UNCHECKED_CAST")
+                            val itemsMaps = doc.get("itens") as? List<Map<String, Any>> ?: emptyList()
+                            Order(
+                                id = doc.id,
+                                date = dateFormat.format(timestamp),
+                                total = (doc.get("total") as? Number)?.toDouble() ?: 0.0,
+                                status = doc.getString("status") ?: "Status desconhecido",
+                                items = itemsMaps.map { m ->
+                                    OrderItem(
+                                        name = m["name"] as? String ?: "Item Desconhecido",
+                                        quantity = (m["quantity"] as? Number)?.toInt() ?: 0,
+                                        subtotal = (m["subtotal"] as? Number)?.toDouble() ?: 0.0
+                                    )
+                                }
+                            )
+                        }.getOrNull()
                     }
-
-                    Order(
-                        id = document.id,
-                        date = dateStr,
-                        total = total,
-                        status = status,
-                        items = ordersItems
-                    )
-                } catch (e: Exception){
-                    null
-                    }
-                }
-
-                uiState = uiState.copy(
-                    orders = ordersList,
-                    isLoading = false
-                )
-            } catch (e: Exception){
-                uiState = uiState.copy(
-                    isLoading = false,
-                    error = "Erro ao carregar pedidos: ${e.localizedMessage}"
-                )
+            }.onSuccess { orders ->
+                uiState = uiState.copy(orders = orders, isLoading = false)
+            }.onFailure { e ->
+                uiState = uiState.copy(isLoading = false, error = "Erro ao carregar pedidos: ${e.localizedMessage}")
             }
         }
     }

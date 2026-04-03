@@ -38,6 +38,7 @@ import com.example.ivalid_compose.ui.theme.AppTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -64,9 +65,9 @@ fun AppNavHost() {
     val nav = rememberNavController()
     val cartVm: CartViewModel = viewModel()
     val homeVm: HomeViewModel = viewModel()
-    val checkoutViewModelFactory = remember {
-        CheckoutViewModelFactory(cartVm)
-    }
+    val profileVm: ProfileViewModel = viewModel()
+    val checkoutViewModelFactory = remember { CheckoutViewModelFactory(cartVm) }
+    val userName = profileVm.uiState.userProfile.name
 
     val navBackStackEntry by nav.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -112,9 +113,9 @@ fun AppNavHost() {
                 // Rotas de Nível Principal (Devem ter Scaffold INTERNO para TopBar, mas não BottomBar)
 
                 composable("home") {
-                    // NOTE: HomeScreen deve ter um Scaffold interno para a TopAppBar e FAB.
                     HomeScreen(
                         viewModel = homeVm,
+                        userName = userName,
                         onOpenProduct = { product -> nav.navigate("product/${product.id}") },
                         cartCount = cartVm.uiState.count,
                         navController = nav
@@ -166,18 +167,28 @@ fun AppNavHost() {
 
                 composable("checkout"){
                     val vm: CheckoutViewModel = viewModel(factory = checkoutViewModelFactory)
+                    
+                    LaunchedEffect(vm.orderPlacedEvent) {
+                        vm.orderPlacedEvent.collect { payload ->
+                            val orderId = payload.first
+                            val totalValue = payload.second
+                            if (vm.uiState.formaPagamentoSelecionada == "Pix") {
+                                nav.navigate("order_confirmation/$orderId/$totalValue") {
+                                    popUpTo("checkout") { inclusive = true }
+                                }
+                            } else {
+                                nav.navigate("orders") {
+                                    popUpTo("home") { inclusive = false }
+                                }
+                            }
+                        }
+                    }
+
                     CheckoutScreen(
                         viewModel = vm,
                         cartViewModel = cartVm,
                         onFinalizarPedido = {
                             vm.finalizarPedido()
-                            val mockOrderId = "TEMP-12345"
-                            val mockTotal = 150.99f
-
-                            nav.navigate("order_confirmation/$mockOrderId/$mockTotal") {
-                                popUpTo("checkout") { inclusive = true }
-                            }
-
                         },
                         onTrocarEndereco = {
                         },
@@ -210,11 +221,9 @@ fun AppNavHost() {
                 }
 
                 composable("profile") {
-                    val vm: ProfileViewModel = viewModel()
                     ProfileScreen(
-                        viewModel = vm,
+                        viewModel = profileVm,
                         onLogout = {
-                            // Navega para a tela de login após o logout
                             nav.navigate("login") {
                                 popUpTo(nav.graph.id) { inclusive = true }
                             }

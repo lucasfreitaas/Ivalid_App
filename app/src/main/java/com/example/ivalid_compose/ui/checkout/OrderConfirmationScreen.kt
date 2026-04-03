@@ -19,6 +19,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.example.ivalid_compose.network.MercadoPagoService
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ivalid_compose.ui.theme.AppTheme
@@ -36,8 +41,17 @@ fun OrderConfirmationScreen(
     totalValue: Double,
     onBackToHome: () -> Unit
 ) {
-    val pixCodeMock = "00020126360014BR.GOV.BCB.PIX01149912345678901234520400005303986540510.505802BR5913NomeEmpresa6007BRASIL62070503***6304CA11"
     val clipboardManager = LocalClipboardManager.current
+    var pixPayload by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(orderId) {
+        // Gerando o QRCode dinamicamente na tela através do MERCADO PAGO
+        val txidTemp = "mp_${orderId.take(15).replace(Regex("[^a-zA-Z0-9]"), "")}"
+        val payload = MercadoPagoService.gerarPix(totalValue, txidTemp)
+        pixPayload = payload
+        isLoading = false
+    }
 
     Scaffold (
         topBar = {
@@ -82,31 +96,42 @@ fun OrderConfirmationScreen(
             Text("Escaneie para pagar com PIX", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(16.dp))
 
-            QrCodeImage(content = pixCodeMock, size = 200)
-
-            Spacer(Modifier.height(32.dp))
-
-            // --- CÓDIGO PIX COPIA E COLA ---
-            Text("Ou use o código Copia e Cola", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, GreenAccent, RoundedCornerShape(12.dp))
-                    .clickable {
-                        clipboardManager.setText(AnnotatedString(pixCodeMock))
-                        // Aqui você mostraria uma Snackbar ou Toast "Código copiado!"
-                    }
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (isLoading) {
+                CircularProgressIndicator(color = RedPrimary)
+                Spacer(Modifier.height(16.dp))
+                Text("Gerando seu QRCode Bancário...", color = Color.Gray)
+            } else if (pixPayload == null) {
                 Text(
-                    text = pixCodeMock.take(30) + "...", // Exibir apenas uma prévia
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+                    "Não foi possível gerar a chave Pix.\nVerifique seu Access Token do Mercado Pago.",
+                    color = Color.Red,
+                    style = MaterialTheme.typography.titleMedium
                 )
-                Icon(Icons.Filled.ContentCopy, contentDescription = "Copiar Código", tint = GreenAccent)
+            } else {
+                QrCodeImage(content = pixPayload!!, size = 200)
+
+                Spacer(Modifier.height(32.dp))
+
+                // --- CÓDIGO PIX COPIA E COLA ---
+                Text("Ou use o código Copia e Cola", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, GreenAccent, RoundedCornerShape(12.dp))
+                        .clickable {
+                            clipboardManager.setText(AnnotatedString(pixPayload!!))
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if(pixPayload!!.length > 25) pixPayload!!.take(25) + "..." else pixPayload!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copiar Código", tint = GreenAccent)
+                }
             }
             Spacer(Modifier.height(16.dp))
             Text(
@@ -119,46 +144,56 @@ fun OrderConfirmationScreen(
 }
 
 @Composable
-fun QrCodeImage(content: String, size: Int = 200){
-    val bitmap = remember(content){
-        try{
-            val bitMatrix: BitMatrix = MultiFormatWriter().encode(
-                content,
-                BarcodeFormat.QR_CODE,
-                size,
-                size
-            )
+fun QrCodeImage(content: String, size: Int = 200) {
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-            val width = bitMatrix.width
-            val height = bitMatrix.height
-            val pixels = IntArray(width * height)
+    LaunchedEffect(content, size) {
+        bitmap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            try {
+                val bitMatrix: BitMatrix = MultiFormatWriter().encode(
+                    content,
+                    BarcodeFormat.QR_CODE,
+                    size,
+                    size
+                )
+                val width = bitMatrix.width
+                val height = bitMatrix.height
+                val pixels = IntArray(width * height)
 
-            for(y in 0 until height) {
-                val offset = y * width
-                for (x in 0 until width){
-                    pixels[offset + x] = if (bitMatrix.get(x, y)) BitmapColor.BLACK else BitmapColor.WHITE
+                for (y in 0 until height) {
+                    val offset = y * width
+                    for (x in 0 until width) {
+                        pixels[offset + x] = if (bitMatrix.get(x, y)) BitmapColor.BLACK else BitmapColor.WHITE
+                    }
                 }
-            }
 
-            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-                setPixels(pixels, 0, width, 0, 0, width, height)
+                val generated = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                generated.setPixels(pixels, 0, width, 0, 0, width, height)
+                generated
+            } catch (e: WriterException) {
+                e.printStackTrace()
+                null
             }
-        } catch (e: WriterException){
-            e.printStackTrace()
-            null
         }
     }
 
-    if(bitmap != null){
+    if (bitmap != null) {
         Image(
-            bitmap = bitmap.asImageBitmap(),
+            bitmap = bitmap!!.asImageBitmap(),
             contentDescription = "QR Code PIX",
             modifier = Modifier
                 .size(size.dp)
                 .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
         )
     } else {
-        Text("Erro ao gerar QR Code", color = RedPrimary)
+        Box(
+            modifier = Modifier
+                .size(size.dp)
+                .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = GreenAccent)
+        }
     }
 }
 

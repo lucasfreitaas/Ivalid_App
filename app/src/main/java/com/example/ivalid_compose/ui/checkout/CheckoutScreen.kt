@@ -11,10 +11,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -106,7 +114,11 @@ fun CheckoutScreen(
             OpcoesEntrega(state)
 
             Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-            FormasPagamento(state)
+            FormasPagamento(state, viewModel)
+            
+            if (state.apiError != null) {
+                Text(state.apiError, color = Color.Red, modifier = Modifier.padding(horizontal = 16.dp))
+            }
 
             Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
@@ -117,6 +129,55 @@ fun CheckoutScreen(
 
             Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
         }
+    }
+
+    if(state.isDailogAddCardVisible) {
+        var numCartao by remember { mutableStateOf("") }
+        var dataValidade by remember { mutableStateOf("") }
+        var cvv by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.toggleDialogAddCard(false) },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.adicionarCartao(numCartao, dataValidade, cvv) },
+                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
+                ) { Text("Adicionar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.toggleDialogAddCard(false) }) { Text("Cancelar") }
+            },
+            title = { Text("Novo Cartão de Crédito", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = numCartao,
+                        onValueChange = { if (it.length <= 19) numCartao = it },
+                        label = { Text("Número do Cartão") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = dataValidade,
+                            onValueChange = { if (it.length <= 5) dataValidade = it },
+                            label = { Text("Validade (MM/AA)") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = cvv,
+                            onValueChange = { if (it.length <= 4) cvv = it },
+                            label = { Text("CVV") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (state.apiError != null) {
+                        Text(state.apiError, color = Color.Red, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        )
     }
 }
 @Composable
@@ -178,7 +239,7 @@ fun OpcoesEntrega(state: CheckoutUiState) {
 
 // Sub-Composable para Formas de Pagamento
 @Composable
-fun FormasPagamento(state: CheckoutUiState) {
+fun FormasPagamento(state: CheckoutUiState, viewModel: CheckoutViewModel) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
             "Formas de pagamento",
@@ -186,25 +247,53 @@ fun FormasPagamento(state: CheckoutUiState) {
         )
         Spacer(Modifier.height(12.dp))
 
-        // Opção PIX (Sempre Selecionada)
+        // Opção PIX
         PagamentoItem(
-            icone = { Icon(painterResource(R.drawable.pix), contentDescription = "Pix", modifier = Modifier.size(24.dp)) }, // Assumindo que você tem um ícone Pix
+            icone = { Icon(painterResource(R.drawable.pix), contentDescription = "Pix", modifier = Modifier.size(24.dp)) },
             texto = "Pix",
-            isSelected = state.formaPagamentoSelecionada == "Pix"
+            isSelected = state.formaPagamentoSelecionada == "Pix",
+            onClick = { viewModel.setFormaPagamento("Pix") }
         )
 
-        // Opção Cartão (Desmarcada)
+        // Opção Cartão
         PagamentoItem(
-            icone = { Icon(painterResource(R.drawable.cartao), contentDescription = "Cartão", modifier = Modifier.size(24.dp)) }, // Use um ícone real de cartão
-            texto = "Cartão - (Debito ou Credito)",
-            isSelected = state.formaPagamentoSelecionada == "Cartão"
+            icone = { Icon(Icons.Default.CreditCard, contentDescription = "Cartão", modifier = Modifier.size(24.dp)) },
+            texto = "Cartão - (Débito ou Crédito)",
+            isSelected = state.formaPagamentoSelecionada == "Cartão",
+            onClick = { viewModel.setFormaPagamento("Cartão") }
         )
 
-        // Opção Dinheiro (Desmarcada)
+        AnimatedVisibility(visible = state.formaPagamentoSelecionada == "Cartão") {
+            Column(modifier = Modifier.padding(start = 36.dp, top = 8.dp)) {
+                state.cartoesSalvos.forEach { cartao ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.Gray)
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = "Final ${cartao.finalNumero} (Val: ${cartao.validade})", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                
+                OutlinedButton(
+                    onClick = { viewModel.toggleDialogAddCard(true) },
+                    modifier = Modifier.padding(top = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RedPrimary)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Adicionar Novo Cartão")
+                }
+            }
+        }
+
+        // Opção Dinheiro
         PagamentoItem(
-            icone = { Icon(painterResource(R.drawable.money), contentDescription = "Dinheiro", modifier = Modifier.size(24.dp)) }, // Use um ícone real de dinheiro
+            icone = { Icon(Icons.Default.LocationOn, contentDescription = "Dinheiro", modifier = Modifier.size(24.dp)) },
             texto = "Dinheiro",
-            isSelected = state.formaPagamentoSelecionada == "Dinheiro"
+            isSelected = state.formaPagamentoSelecionada == "Dinheiro",
+            onClick = { viewModel.setFormaPagamento("Dinheiro") }
         )
     }
 }
@@ -285,10 +374,11 @@ fun DetalhesPedidoExpansivel(
 }
 
 @Composable
-fun PagamentoItem(icone: @Composable () -> Unit, texto: String, isSelected: Boolean) {
+fun PagamentoItem(icone: @Composable () -> Unit, texto: String, isSelected: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

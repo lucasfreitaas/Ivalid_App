@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ivalid_compose.repository.ProductRepository
 import kotlinx.coroutines.launch
+import com.google.firebase.firestore.IgnoreExtraProperties
 import kotlin.math.roundToInt
 
 data class Category(
@@ -25,6 +26,7 @@ enum class ProductSortOption {
 }
 
 
+@IgnoreExtraProperties
 data class Product(
     val id: String = "",
     val name: String = "",
@@ -34,13 +36,13 @@ data class Product(
     val distanceKm: Double = 0.0,
     val oldPrice: Double = 0.0,
     val newPrice: Double = 0.0,
-    val Daysvalidity: Int = 0,
+    val daysValidity: Int = 0,
     val categoryId: String = "",
     val isFavorite: Boolean = false
 ) {
     val priceOriginal get() = oldPrice
     val priceNow get() = newPrice
-    val expiresInDays get() = Daysvalidity
+    val expiresInDays get() = daysValidity
 
     val discountPercent: Int
         get() = if (oldPrice > 0) {

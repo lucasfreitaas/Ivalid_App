@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,7 +106,7 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(16.dp))
             OutlinedButton(
-                onClick = { /* TODO: Adicionar endereço */ },
+                onClick = { viewModel.setAddressDialogVisible(true) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 border = BorderStroke(1.dp, RedPrimary),
@@ -132,6 +134,73 @@ fun ProfileScreen(
                 Text(state.error!!, color = Color.Red, modifier = Modifier.padding(top = 16.dp))
             }
         }
+    }
+
+    if (state.isAddressDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setAddressDialogVisible(false) },
+            confirmButton = {
+                Button(onClick = { viewModel.setAddressDialogVisible(false) }, colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)) {
+                    Text("Salvar Endereço")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setAddressDialogVisible(false) }) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            },
+            title = { Text("Adicionar Endereço", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = state.addressData.cep,
+                        onValueChange = { val clean = it.filter { char -> char.isDigit() }.take(8); viewModel.updateAddressField(AddressField.CEP, clean) },
+                        label = { Text("CEP") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = { if(state.isAddressLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = RedPrimary) }
+                    )
+                    OutlinedTextField(
+                        value = state.addressData.street,
+                        onValueChange = { viewModel.updateAddressField(AddressField.STREET, it) },
+                        label = { Text("Endereço") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = state.addressData.number,
+                            onValueChange = { viewModel.updateAddressField(AddressField.NUMBER, it) },
+                            label = { Text("Número") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = state.addressData.complement,
+                            onValueChange = { viewModel.updateAddressField(AddressField.COMPLEMENT, it) },
+                            label = { Text("Complemento") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
+                    OutlinedTextField(
+                        value = state.addressData.neighborhood,
+                        onValueChange = { viewModel.updateAddressField(AddressField.NEIGHBORHOOD, it) },
+                        label = { Text("Bairro") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = state.addressData.city,
+                        onValueChange = { viewModel.updateAddressField(AddressField.CITY, it) },
+                        label = { Text("Cidade") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            }
+        )
     }
 }
 @Composable
