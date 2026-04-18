@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Remove
@@ -146,22 +147,28 @@ fun CartScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(top = 12.dp, bottom = 12.dp)
                 ) {
-                    items(state.items, key = { it.product.id }) { item ->
+                    items(state.items, key = { "${it.product.id}_${it.origin}" }) { item ->
                         CartItemRow(
                             item = item,
+                            estimatedCashbackText = if (item.origin == OriginType.DOACAO) {
+                                val cashbackCalc = cartViewModel.gamificationService.calculateCashback(item.subtotal, state.userTotalDonationsMock)
+                                "Ganha R$ ${"%.2f".format(java.util.Locale("pt", "BR"), cashbackCalc)} de desconto futuro"
+                            } else null,
                             onIncrement = {
-                                cartViewModel.setQuantity(item.product.id, item.quantity + 1)
+                                cartViewModel.add(item.product, 1, isDonationContext = (item.origin == OriginType.DOACAO))
                             },
                             onDecrement = {
-                                cartViewModel.setQuantity(item.product.id, item.quantity - 1)
+                                cartViewModel.setQuantity(item.product.id, item.quantity - 1, item.origin)
                             },
-                            onRemove = { cartViewModel.remove(item.product.id) }
+                            onRemove = { cartViewModel.remove(item.product.id, item.origin) }
                         )
                     }
                 }
 
                 SummaryBox(
                     total = state.total,
+                    donationTotal = state.donationSubtotal,
+                    estimatedCashback = cartViewModel.gamificationService.calculateCashback(state.donationSubtotal, state.userTotalDonationsMock),
                     onCheckout = onCheckout
                 )
             }
@@ -171,16 +178,20 @@ fun CartScreen(
 @Composable
 private fun CartItemRow(
     item: CartItem,
+    estimatedCashbackText: String?,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
     onRemove: () -> Unit
 ) {
     val shape = RoundedCornerShape(12.dp)
+    val isDonation = item.origin == OriginType.DOACAO
+    
     Surface(
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (isDonation) Color(0xFFFFF0F0) else MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        border = if (isDonation) androidx.compose.foundation.BorderStroke(1.dp, RedPrimary.copy(alpha=0.5f)) else null
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -243,6 +254,20 @@ private fun CartItemRow(
                         )
                     }
                 }
+
+                if (isDonation && estimatedCashbackText != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(androidx.compose.material.icons.Icons.Default.VolunteerActivism, contentDescription = null, tint = RedPrimary, modifier = Modifier.size(12.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = estimatedCashbackText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = RedPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.width(8.dp))
@@ -274,6 +299,8 @@ private fun CartItemRow(
 @Composable
 private fun SummaryBox(
     total: Double,
+    donationTotal: Double,
+    estimatedCashback: Double,
     onCheckout: () -> Unit
 ) {
     Column(
@@ -290,7 +317,7 @@ private fun SummaryBox(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Total", style = MaterialTheme.typography.titleMedium)
+            Text("Total da Compra", style = MaterialTheme.typography.titleMedium)
             Text(
                 "R$ ${"%.2f".format(Locale("pt", "BR"), total)}",
                 style = MaterialTheme.typography.titleMedium.copy(
@@ -298,6 +325,31 @@ private fun SummaryBox(
                     color = RedPrimary
                 )
             )
+        }
+        
+        if (donationTotal > 0) {
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Total em Doações", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "R$ ${"%.2f".format(Locale("pt", "BR"), donationTotal)}",
+                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Cashback estimado", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = com.example.ivalid_compose.ui.theme.GreenAccent)
+                Text(
+                    "+ R$ ${"%.2f".format(Locale("pt", "BR"), estimatedCashback)}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black, color = com.example.ivalid_compose.ui.theme.GreenAccent)
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))

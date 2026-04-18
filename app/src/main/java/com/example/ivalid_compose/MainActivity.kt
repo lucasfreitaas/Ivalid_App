@@ -3,6 +3,8 @@ package com.example.ivalid_compose
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -25,6 +27,7 @@ import com.example.ivalid_compose.ui.checkout.CheckoutScreen
 import com.example.ivalid_compose.ui.checkout.CheckoutViewModel
 import com.example.ivalid_compose.ui.checkout.CheckoutViewModelFactory
 import com.example.ivalid_compose.ui.checkout.OrderConfirmationScreen
+import com.example.ivalid_compose.ui.donation.DonationScreen
 import com.example.ivalid_compose.ui.home.HomeScreen
 import com.example.ivalid_compose.ui.home.HomeViewModel
 import com.example.ivalid_compose.ui.home.BottomNavItem
@@ -39,6 +42,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -48,6 +52,8 @@ import com.example.ivalid_compose.ui.profile.ProfileScreen
 import com.example.ivalid_compose.ui.profile.ProfileViewModel
 import com.example.ivalid_compose.ui.settings.SettingsScreen
 import com.example.ivalid_compose.ui.theme.RedPrimary
+
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +66,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 @Composable
 fun AppNavHost() {
     val nav = rememberNavController()
@@ -71,7 +78,9 @@ fun AppNavHost() {
 
     val navBackStackEntry by nav.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute in listOf("home", "orders", "profile", "settings")
+    val showBottomBar = currentRoute in listOf("home", "donation", "offers", "orders", "profile")
+
+    val startDest = if (FirebaseAuth.getInstance().currentUser != null) "home" else "login"
 
     Scaffold(
         bottomBar = {
@@ -82,7 +91,7 @@ fun AppNavHost() {
     ) { paddingValues ->
             NavHost(
                 navController = nav,
-                startDestination = "login",
+                startDestination = startDest,
                 modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
             ) {
                 composable("login") {
@@ -131,6 +140,15 @@ fun AppNavHost() {
 
                 composable("profile") {
                     // Se esta tela for de nível principal, ela deve ter um Scaffold interno.
+                }
+                composable("donation") {
+                    DonationScreen(
+                        homeViewModel = homeVm,
+                        cartViewModel = cartVm
+                    )
+                }
+                composable("offers") {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Descontão") }
                 }
                 composable("settings") {
                     // Se esta tela for de nível principal, ela deve ter um Scaffold interno.
@@ -243,9 +261,10 @@ fun BottomNavigationBar(
 ) {
     val items = listOf(
         BottomNavItem.Home,
+        BottomNavItem.Donation,
+        BottomNavItem.Offers,
         BottomNavItem.Orders,
-        BottomNavItem.Profile,
-        BottomNavItem.Settings
+        BottomNavItem.Profile
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

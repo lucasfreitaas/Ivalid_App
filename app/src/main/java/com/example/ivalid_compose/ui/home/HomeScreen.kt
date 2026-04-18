@@ -51,9 +51,10 @@ import com.example.ivalid_compose.ui.theme.YellowAccent
 
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Home : BottomNavItem("home", Icons.Default.Home, "Início")
+    object Donation : BottomNavItem("donation", Icons.Outlined.FavoriteBorder, "Doação")
+    object Offers : BottomNavItem("offers", Icons.Outlined.LocalOffer, "Descontão")
     object Orders : BottomNavItem("orders", Icons.AutoMirrored.Filled.ListAlt, "Pedidos")
     object Profile : BottomNavItem("profile", Icons.Default.Person, "Perfil")
-    object Settings : BottomNavItem("settings", Icons.Default.Settings, "Config.")
 }
 
 
@@ -334,25 +335,38 @@ private fun ProductCard(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(20.dp)
+    
+    // Central visual focus: Urgência do Vencimento
+    val urgencyBgColor = when {
+        product.expiresInDays <= 10 -> Color(0xFFFFEBEE)   // 0-10 dias: Vermelho
+        product.expiresInDays <= 30 -> Color(0xFFFFF3E0)  // 11-30 dias: Amarelo
+        else -> Color(0xFFE8F5E9)                         // > 30 dias: Verde
+    }
+    val urgencyTextColor = when {
+        product.expiresInDays <= 10 -> Color(0xFFD32F2F)
+        product.expiresInDays <= 30 -> Color(0xFFF57C00)
+        else -> Color(0xFF388E3C)
+    }
 
     Card(
         onClick = onClick,
         shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         modifier = modifier
-            .shadow(elevation = 0.dp, shape = shape)
-            .height(310.dp)
+            .fillMaxWidth()
+            .padding(4.dp)
     ) {
-        Column(Modifier.padding(10.dp).fillMaxSize()) {
-
+        Column(Modifier.fillMaxWidth()) {
+            
+            // Image Area
             Box(
                 modifier = Modifier
-                    .height(110.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF5F5F5))
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    .background(Color(0xFFF9F9F9))
             ) {
                 key(product.id){
                     AsyncImage(
@@ -361,105 +375,92 @@ private fun ProductCard(
                             .crossfade(true)
                             .build(),
                         contentDescription = product.name,
-                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
 
+                // Desconto (Top Left)
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(8.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(RedPrimary)
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "-${product.discountPercent}%",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                        style = MaterialTheme.typography.labelSmall.copy(color = Color.White, fontWeight = FontWeight.Black)
                     )
                 }
 
-                IconButton(
-                    onClick = onToggleFavorite,
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
+                // Fav (Top Right)
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.align(Alignment.TopEnd)) {
                     Icon(
                         imageVector = if (product.isFavorite) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Favoritar",
-                        tint = if (product.isFavorite) RedPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (product.isFavorite) RedPrimary else Color.White,
+                        modifier = Modifier.shadow(elevation = if (product.isFavorite) 0.dp else 4.dp, shape = CircleShape)
                     )
                 }
+            }
 
-                val (bg, fg) = when {
-                    product.expiresInDays <= 10 -> RedPrimary.copy(alpha = 0.15f) to RedPrimary
-                    product.expiresInDays <= 30 -> YellowAccent.copy(alpha = 0.18f) to YellowAccent
-                    else -> GreenAccent.copy(alpha = 0.16f) to GreenAccent
-                }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(bg)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
+            // Central Highlight: Vencimento
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(urgencyBgColor)
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Vence em ${product.expiresInDays} dias",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        color = urgencyTextColor
+                    )
+                )
+            }
+
+            // Info Area
+            Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                Box(modifier = Modifier.height(48.dp), contentAlignment = Alignment.TopStart) {
                     Text(
-                        text = "Vence em ${product.expiresInDays}d",
+                        text = product.name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 2,
+                        minLines = 2, // fallback for < 1.4.0 is the Box height
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text = "${product.storeName} • ${"%.1f".format(product.distanceKm)} km",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        "R$ ${"%.2f".format(product.priceNow)}",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, color = RedPrimary)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "R$ ${"%.2f".format(product.priceOriginal)}",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = fg,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textDecoration = TextDecoration.LineThrough
+                        ),
+                        modifier = Modifier.padding(bottom = 2.dp)
                     )
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                product.name,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                "${product.storeName} • ${"%.1f".format(product.distanceKm)} km",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(6.dp))
-
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    "R$ ${"%.2f".format(product.priceNow)}",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = RedPrimary
-                    )
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "R$ ${"%.2f".format(product.priceOriginal)}",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textDecoration = TextDecoration.LineThrough
-                    )
-                )
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            GradientRedButton(
-                text = "Ver oferta",
-                enabled = true,
-                onClick = onClick,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }

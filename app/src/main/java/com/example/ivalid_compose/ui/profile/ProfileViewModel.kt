@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.ivalid_compose.domain.donation.DonationGamificationService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -39,7 +40,9 @@ data class ProfileUiState(
     val error: String? = null,
     val isAddressDialogVisible: Boolean = false,
     val addressData: AddressData = AddressData(),
-    val isAddressLoading: Boolean = false
+    val isAddressLoading: Boolean = false,
+    val totalDonations: Int = 0,
+    val availableCashback: Double = 0.0
 )
 
 class ProfileViewModel : ViewModel() {
@@ -72,7 +75,16 @@ class ProfileViewModel : ViewModel() {
                     uid = user.uid
                 )
             }.onSuccess { profile ->
-                uiState = uiState.copy(userProfile = profile, isLoading = false)
+                // Mocking gamification stats para demonstração e UI
+                val mockDonations = 15 // Prata
+                val mockCashback = 24.50
+                
+                uiState = uiState.copy(
+                    userProfile = profile, 
+                    totalDonations = mockDonations,
+                    availableCashback = mockCashback,
+                    isLoading = false
+                )
             }.onFailure { e ->
                 uiState = uiState.copy(error = "Erro ao carregar perfil: ${e.localizedMessage}", isLoading = false)
             }

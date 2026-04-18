@@ -236,7 +236,7 @@ fun SignUpScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(Modifier.height(16.dp))
+
 
 
                 OutlinedTextField(
@@ -476,3 +476,4 @@ private fun PreviewSignUpDark() {
         }
     }
 }
+

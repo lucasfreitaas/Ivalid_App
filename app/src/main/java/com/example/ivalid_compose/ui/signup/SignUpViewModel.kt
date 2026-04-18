@@ -132,15 +132,13 @@ class SignUpViewModel : ViewModel() {
         val password = uiState.password
         val fullName = uiState.fullName
 
-        auth.createUserWithEmailAndPassword(uiState.email, uiState.password)
+        auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener {
-                task -> if (task.isSuccessful){
-                    onSuccess()
-                } else {
+                task -> if (!task.isSuccessful){
+                    uiState = uiState.copy(isLoading = false)
                     onError(task.exception?.message ?: "Erro ao cadastrar usuário")
                     return@addOnCompleteListener
                 }
-
 
                 val uid = auth.currentUser!!.uid
                 val data = mapOf(
@@ -153,7 +151,7 @@ class SignUpViewModel : ViewModel() {
                     .set(data)
                     .addOnSuccessListener {
                         uiState = uiState.copy(isLoading = false)
-                        onSuccess
+                        onSuccess()
                     }
                     .addOnFailureListener {
                         uiState = uiState.copy(isLoading = false)

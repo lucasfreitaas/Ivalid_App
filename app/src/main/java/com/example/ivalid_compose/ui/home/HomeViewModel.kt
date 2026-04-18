@@ -41,14 +41,21 @@ data class Product(
     val isFavorite: Boolean = false
 ) {
     val priceOriginal get() = oldPrice
-    val priceNow get() = newPrice
-    val expiresInDays get() = daysValidity
 
     val discountPercent: Int
-        get() = if (oldPrice > 0) {
-            val res = ((oldPrice - newPrice) / oldPrice) * 100
-            if (res.isNaN()) 0 else res.roundToInt().coerceAtLeast(0)
-        } else 0
+        get() {
+            // A lógica correta: quanto menos dias para vencer, maior o desconto.
+            val multiplicador = 2
+            return maxOf(0, (30 - daysValidity) * multiplicador).coerceAtMost(90)
+        }
+
+    val priceNow: Double
+        get() {
+            // newPrice real é derivado do desconto para não estar invertido
+            return if (oldPrice > 0) oldPrice * (1.0 - (discountPercent / 100.0)) else newPrice
+        }
+
+    val expiresInDays get() = daysValidity
 }
 
 data class HomeUiState(
